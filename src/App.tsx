@@ -18,19 +18,41 @@ function App() {
     console.log('Selected feed:', feed);
   };
 
+  const getStatusColor = (): string => {
+    if (isConnecting) return '#ffa500';
+    if (isConnected) return '#4ade80';
+    return '#ef4444';
+  };
+
+  const getStatusText = (): string => {
+    if (isConnecting) return 'Connecting...';
+    if (isConnected) return 'Connected';
+    return 'Disconnected';
+  };
+
   return (
     <div className="app">
       <div className="container">
         <header className="header">
-          <h1 className="title">Magicblock Pyth Template</h1>
-          <p className="subtitle">This is an example template, showing off how to integrate and use Pyth on a Magicblock Ephemeral Rollup.</p>
+          <h1 className="title">Magicblock x Pyth</h1>
+          <p className="subtitle">This is an example showing how to integrate and use Pyth from a <a href="https://docs.magicblock.gg/pages/get-started/introduction/ephemeral-rollup" target="_blank" rel="noopener noreferrer">Magicblock Ephemeral Rollup</a>. Get started using Magicblock <a href="https://docs.magicblock.gg/pages/get-started/how-integrate-your-program/quickstart" target="_blank" rel="noopener noreferrer">here</a>.</p>
         </header>
 
         <div className="content">
-          <PriceFeedAccordion
-            onSelectFeed={handleSelectFeed}
-            selectedFeed={selectedFeed}
-          />
+          <div className="accordion-section">
+            <PriceFeedAccordion
+              onSelectFeed={handleSelectFeed}
+              selectedFeed={selectedFeed}
+            />
+            
+            <div className="status-indicator">
+              <div 
+                className="status-dot"
+                style={{ backgroundColor: getStatusColor() }}
+              />
+              <span className="status-text">{getStatusText()}</span>
+            </div>
+          </div>
 
           <PriceDisplay
             price={price}
@@ -54,8 +76,8 @@ function App() {
               Pyth Network
             </a>{' '}
             on{' '}
-            <a href="https://solana.com" target="_blank" rel="noopener noreferrer">
-              Solana
+            <a href="https://magicblock.xyz" target="_blank" rel="noopener noreferrer">
+              Magicblock
             </a>
           </p>
         </footer>
@@ -103,11 +125,71 @@ function App() {
           margin: 0 auto;
         }
 
+        .subtitle a {
+          color: var(--accent-gold);
+          text-decoration: none;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          position: relative;
+          border-bottom: 1px solid transparent;
+        }
+
+        .subtitle a:hover {
+          color: var(--text-accent);
+          border-bottom: 1px solid var(--text-accent);
+        }
+
         .content {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 2rem;
+          gap: 0 rem;
+        }
+
+        .accordion-section {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          justify-content: center;
+          margin-bottom: 2rem;
+          max-width: 600px;
+          width: 100%;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .status-indicator {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.25rem;
+          background: var(--bg-card);
+          border-radius: 24px;
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--border-primary);
+          box-shadow: var(--shadow-md);
+          transition: all 0.3s ease;
+        }
+
+        .status-indicator:hover {
+          background: var(--bg-card-hover);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-lg);
+        }
+
+        .status-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          transition: all 0.3s ease;
+          box-shadow: 0 0 10px currentColor;
+        }
+
+        .status-text {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--text-secondary);
+          letter-spacing: 0.025em;
         }
 
         .error-message {

@@ -36,35 +36,8 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
     return formatted;
   };
 
-  const getStatusColor = (): string => {
-    if (isConnecting) return '#ffa500';
-    if (isConnected) return '#4ade80';
-    return '#ef4444';
-  };
-
-  const getStatusText = (): string => {
-    if (isConnecting) return 'Connecting...';
-    if (isConnected) return 'Connected';
-    return 'Disconnected';
-  };
-
   return (
     <div className="price-display">
-      <div className="status-indicator">
-        <div 
-          className="status-dot"
-          style={{ backgroundColor: getStatusColor() }}
-        />
-        <span className="status-text">{getStatusText()}</span>
-      </div>
-
-      {selectedFeed && (
-        <div className="feed-info">
-          <h2 className="feed-symbol">{selectedFeed.symbol}</h2>
-          <p className="feed-name">{selectedFeed.description}</p>
-        </div>
-      )}
-
       <div className="price-container">
         {price !== null && selectedFeed ? (
           <>
@@ -104,41 +77,6 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
           flex: 1;
           text-align: center;
           padding: 2rem;
-        }
-
-        .status-indicator {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 2rem;
-          padding: 0.75rem 1.25rem;
-          background: var(--bg-card);
-          border-radius: 24px;
-          backdrop-filter: blur(20px);
-          border: 1px solid var(--border-primary);
-          box-shadow: var(--shadow-md);
-          transition: all 0.3s ease;
-        }
-
-        .status-indicator:hover {
-          background: var(--bg-card-hover);
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-lg);
-        }
-
-        .status-dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          transition: all 0.3s ease;
-          box-shadow: 0 0 10px currentColor;
-        }
-
-        .status-text {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: var(--text-secondary);
-          letter-spacing: 0.025em;
         }
 
         .feed-info {

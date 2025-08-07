@@ -1,11 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { PriceFeed } from '../types';
 import priceFeedsData from '../../pyth_lazer_list.json';
+import { PublicKey } from '@solana/web3.js';
+import { Buffer } from 'buffer';
 
 interface PriceFeedAccordionProps {
   onSelectFeed: (feed: PriceFeed) => void;
   selectedFeed?: PriceFeed;
 }
+
+const PROGRAM_ID = new PublicKey('PriCems5tHihc6UDXDjzjeawomAwBduWMGAi8ZUjppd');
 
 const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
   onSelectFeed,
@@ -15,6 +19,17 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const priceFeeds = priceFeedsData as PriceFeed[];
+
+  const deriveFeedAddress = (feedId: number): string => {
+    return PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('price_feed'),
+        Buffer.from('pyth-lazer'),
+        Buffer.from(feedId.toString())
+      ],
+      PROGRAM_ID
+    )[0].toString();
+  };
 
   const filteredFeeds = useMemo(() => {
     if (!searchTerm) return priceFeeds;
@@ -41,9 +56,16 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="header-content">
-          <span className="selected-feed">
-            {selectedFeed ? selectedFeed.name : 'Select a Price Feed'}
-          </span>
+          <div className="selected-feed">
+            {selectedFeed ? (
+              <>
+                <span className="feed-ticker">{selectedFeed.name}</span>
+                <span className="feed-name-subtext">{selectedFeed.description}</span>
+              </>
+            ) : (
+              'Select a Price Feed'
+            )}
+          </div>
           <span className={`arrow ${isOpen ? 'open' : ''}`}>▼</span>
         </div>
       </div>
@@ -62,16 +84,30 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           </div>
           
           <div className="feeds-list">
-            {filteredFeeds.map((feed) => (
-              <div
-                key={feed.pyth_lazer_id}
-                className={`feed-item ${selectedFeed?.pyth_lazer_id === feed.pyth_lazer_id ? 'selected' : ''}`}
-                onClick={() => handleSelectFeed(feed)}
-              >
-                <div className="feed-name">{feed.name}</div>
-                <div className="feed-description">{feed.description}</div>
-              </div>
-            ))}
+            {filteredFeeds.map((feed) => {
+              const feedAddress = deriveFeedAddress(feed.pyth_lazer_id);
+              return (
+                <div
+                  key={feed.pyth_lazer_id}
+                  className={`feed-item ${selectedFeed?.pyth_lazer_id === feed.pyth_lazer_id ? 'selected' : ''}`}
+                  onClick={() => handleSelectFeed(feed)}
+                >
+                  <div className="feed-header">
+                    <div className="feed-name">{feed.name}</div>
+                    <a 
+                      href={`https://explorer.solana.com/address/${feedAddress}?cluster=devnet`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="feed-address-link"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {feedAddress.slice(0, 8)}...{feedAddress.slice(-8)}
+                    </a>
+                  </div>
+                  <div className="feed-description">{feed.description}</div>
+                </div>
+              );
+            })}
             
             {filteredFeeds.length === 0 && (
               <div className="no-results">No price feeds found</div>
@@ -86,13 +122,13 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           border-radius: 16px;
           backdrop-filter: blur(20px);
           border: 1px solid var(--border-primary);
-          max-width: 600px;
-          margin: 0 auto 2rem;
+          margin: 0;
           box-shadow: var(--shadow-lg);
           transition: all 0.3s ease;
           overflow: visible; /* Changed from hidden to allow overlay */
           position: relative;
           z-index: 10; /* Ensure it appears above other content */
+          flex: 1;
         }
 
         .price-feed-accordion:hover {
@@ -103,7 +139,7 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
 
         .accordion-header {
           padding: 1.25rem 1.5rem;
-          min-width: 300px;
+          min-width: 400px;
           cursor: pointer;
           transition: all 0.2s ease;
           background: var(--bg-glass);
@@ -141,6 +177,21 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           font-weight: 600;
           font-size: 1.125rem;
           color: var(--text-primary);
+          letter-spacing: 0.025em;
+        }
+
+        .feed-ticker {
+          font-weight: 600;
+          font-size: 1.125rem;
+          color: var(--text-primary);
+          letter-spacing: 0.025em;
+        }
+
+        .feed-name-subtext {
+          font-weight: 400;
+          font-size: 0.875rem;
+          color: var(--text-muted);
+          margin-left: 0.5rem;
           letter-spacing: 0.025em;
         }
 
@@ -262,12 +313,38 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           border-bottom: none;
         }
 
+        .feed-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.375rem;
+        }
+
         .feed-name {
           font-weight: 600;
           font-size: 1rem;
-          margin-bottom: 0.375rem;
           color: var(--text-primary);
           letter-spacing: 0.025em;
+        }
+
+        .feed-address-link {
+          font-size: 0.75rem;
+          color: var(--accent-gold);
+          text-decoration: none;
+          font-weight: 500;
+          padding: 0.25rem 0.5rem;
+          border-radius: 6px;
+          background: rgba(251, 191, 36, 0.1);
+          border: 1px solid rgba(251, 191, 36, 0.2);
+          transition: all 0.2s ease;
+          font-family: 'Courier New', monospace;
+        }
+
+        .feed-address-link:hover {
+          background: rgba(251, 191, 36, 0.2);
+          border-color: rgba(251, 191, 36, 0.4);
+          color: var(--text-accent);
+          transform: translateY(-1px);
         }
 
         .feed-description {
