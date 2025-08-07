@@ -11,7 +11,7 @@ function App() {
     (priceFeedsData as PriceFeed[]).find(feed => feed.name === 'BTCUSD')
   );
 
-  const { price, isConnected, isConnecting, error, feedAddress } = useSolanaWebSocket(selectedFeed);
+  const { price, isConnected, isConnecting, error, feedAddress, updateCount } = useSolanaWebSocket(selectedFeed);
 
   const handleSelectFeed = (feed: PriceFeed) => {
     setSelectedFeed(feed);
@@ -60,6 +60,7 @@ function App() {
             isConnected={isConnected}
             isConnecting={isConnecting}
             feedAddress={feedAddress}
+            updateCount={updateCount}
           />
 
           {error && (
@@ -118,7 +119,7 @@ function App() {
         }
 
         .subtitle {
-          font-size: 1.25rem;
+          font-size: 1rem;
           color: var(--text-muted);
           font-weight: 400;
           max-width: 600px;

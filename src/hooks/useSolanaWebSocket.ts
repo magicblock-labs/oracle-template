@@ -17,6 +17,7 @@ interface UseSolanaWebSocketResult {
   isConnecting: boolean;
   error: string | null;
   feedAddress: string | null;
+  updateCount: number;
 }
 
 export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocketResult => {
@@ -25,6 +26,7 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedAddress, setFeedAddress] = useState<string | null>(null);
+  const [updateCount, setUpdateCount] = useState(0);
   
   const connectionRef = useRef<Connection | null>(null);
   const subscriptionIdRef = useRef<number | null>(null);
@@ -62,6 +64,7 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
     const newPrice = parseAccountData(accountInfo);
     setPrice(newPrice);
     setError(null);
+    setUpdateCount(prev => prev + 1);
   }, [parseAccountData]);
 
   const subscribeToAccount = useCallback(async (feedAddress: PublicKey) => {
@@ -145,5 +148,6 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
     isConnecting,
     error,
     feedAddress,
+    updateCount,
   };
 }; 

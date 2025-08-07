@@ -7,6 +7,7 @@ interface PriceDisplayProps {
   isConnected: boolean;
   isConnecting: boolean;
   feedAddress: string | null;
+  updateCount: number;
 }
 
 const PriceDisplay: React.FC<PriceDisplayProps> = ({
@@ -15,7 +16,23 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
   isConnected,
   isConnecting,
   feedAddress,
+  updateCount,
 }) => {
+  const [startTime] = React.useState(Date.now());
+  const [updatesPerSecond, setUpdatesPerSecond] = React.useState(0);
+  const [msPerUpdate, setMsPerUpdate] = React.useState(0);
+
+  React.useEffect(() => {
+    if (updateCount > 0) {
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      const ups = updateCount / elapsedSeconds;
+      setUpdatesPerSecond(ups);
+      
+      const msPerUpdate = elapsedSeconds * 1000 / updateCount;
+      setMsPerUpdate(msPerUpdate);
+    }
+  }, [updateCount, startTime]);
+
   const formatPrice = (value: number, exponent: number): string => {
     console.log('value', value);
     console.log('exponent', exponent);
@@ -66,6 +83,23 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
               {feedAddress.slice(0, 4)}...{feedAddress.slice(-4)}
             </a>
           </p>
+          
+          <div className="metrics-container">
+            <div className="metric-block">
+              <div className="metric-label">Price Updates</div>
+              <div className="metric-value">{updateCount}</div>
+            </div>
+            
+            <div className="metric-block">
+              <div className="metric-label">Updates/Second</div>
+              <div className="metric-value">{updatesPerSecond.toFixed(2)}</div>
+            </div>
+            
+            <div className="metric-block">
+              <div className="metric-label">ms/Update</div>
+              <div className="metric-value">{msPerUpdate.toFixed(0)}</div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -195,6 +229,59 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
 
         .account-link:hover {
           color: var(--text-accent);
+        }
+
+        .update-counter {
+          font-size: 0.875rem;
+          color: var(--text-muted);
+          line-height: 1.6;
+          margin: 0.5rem 0 0 0;
+        }
+
+        .metrics-container {
+          display: flex;
+          gap: 1rem;
+          margin-top: 2rem;
+          justify-content: center;
+          width: 100%;
+          max-width: 600px;
+        }
+
+        .metric-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 2rem 1.5rem;
+          background: var(--bg-glass);
+          border-radius: 16px;
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--border-primary);
+          box-shadow: var(--shadow-md);
+          transition: all 0.3s ease;
+          flex: 1;
+        }
+
+        .metric-block:hover {
+          background: var(--bg-card-hover);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-lg);
+        }
+
+        .metric-label {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--accent-gold);
+          font-variant-numeric: tabular-nums;
+          line-height: 1;
         }
 
 
