@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Connection, PublicKey, AccountInfo, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { PriceFeed } from '../types';
 import { Buffer } from 'buffer';
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import PriceFeedAccordion from './components/PriceFeedAccordion';
 import PriceDisplay from './components/PriceDisplay';
 import { useSolanaWebSocket } from './hooks/useSolanaWebSocket';
