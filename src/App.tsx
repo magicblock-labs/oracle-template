@@ -11,7 +11,7 @@ function App() {
     (priceFeedsData as PriceFeed[]).find(feed => feed.name === 'BTCUSD')
   );
 
-  const { price, isConnected, isConnecting, error } = useSolanaWebSocket(selectedFeed);
+  const { price, isConnected, isConnecting, error, feedAddress } = useSolanaWebSocket(selectedFeed);
 
   const handleSelectFeed = (feed: PriceFeed) => {
     setSelectedFeed(feed);
@@ -22,8 +22,8 @@ function App() {
     <div className="app">
       <div className="container">
         <header className="header">
-          <h1 className="title">Solana Price Feed Dashboard</h1>
-          <p className="subtitle">Real-time cryptocurrency prices from Pyth Network</p>
+          <h1 className="title">Magicblock Pyth Template</h1>
+          <p className="subtitle">This is an example template, showing off how to integrate and use Pyth on a Magicblock Ephemeral Rollup.</p>
         </header>
 
         <div className="content">
@@ -37,6 +37,7 @@ function App() {
             selectedFeed={selectedFeed}
             isConnected={isConnected}
             isConnecting={isConnecting}
+            feedAddress={feedAddress}
           />
 
           {error && (
@@ -175,44 +176,7 @@ function App() {
           width: 100%;
         }
 
-        @media (max-width: 768px) {
-          .container {
-            padding: 1rem;
-          }
 
-          .title {
-            font-size: 2.5rem;
-          }
-
-          .subtitle {
-            font-size: 1.125rem;
-          }
-
-          .header {
-            margin-bottom: 2rem;
-          }
-
-          .content {
-            gap: 1.5rem;
-          }
-
-          .error-message {
-            top: 1rem;
-            right: 1rem;
-            left: 1rem;
-            max-width: none;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .title {
-            font-size: 2rem;
-          }
-
-          .subtitle {
-            font-size: 1rem;
-          }
-        }
       `}</style>
     </div>
   );

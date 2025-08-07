@@ -90,7 +90,9 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           margin: 0 auto 2rem;
           box-shadow: var(--shadow-lg);
           transition: all 0.3s ease;
-          overflow: hidden;
+          overflow: visible; /* Changed from hidden to allow overlay */
+          position: relative;
+          z-index: 10; /* Ensure it appears above other content */
         }
 
         .price-feed-accordion:hover {
@@ -101,10 +103,12 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
 
         .accordion-header {
           padding: 1.25rem 1.5rem;
+          min-width: 300px;
           cursor: pointer;
           transition: all 0.2s ease;
           background: var(--bg-glass);
           position: relative;
+          border-radius: 16px; /* Ensure header has rounded corners */
         }
 
         .accordion-header::before {
@@ -153,8 +157,33 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
         }
 
         .accordion-content {
-          border-top: 1px solid var(--border-secondary);
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
           background: var(--bg-secondary);
+          border: 1px solid var(--border-primary);
+          border-top: none;
+          border-radius: 0 0 16px 16px;
+          box-shadow: var(--shadow-xl);
+          backdrop-filter: blur(20px);
+          z-index: 20;
+          max-height: 400px;
+          overflow: hidden;
+          animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+            max-height: 0;
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            max-height: 400px;
+          }
         }
 
         .search-container {
@@ -257,32 +286,7 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           background: var(--bg-glass);
         }
 
-        @media (max-width: 768px) {
-          .accordion-header {
-            padding: 1rem 1.25rem;
-          }
 
-          .selected-feed {
-            font-size: 1rem;
-          }
-
-          .search-container {
-            padding: 1rem 1.25rem;
-          }
-
-          .search-input {
-            padding: 0.75rem 1rem;
-            font-size: 0.875rem;
-          }
-
-          .feed-item {
-            padding: 1rem 1.25rem;
-          }
-
-          .feeds-list {
-            max-height: 280px;
-          }
-        }
       `}</style>
     </div>
   );

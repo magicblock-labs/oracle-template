@@ -6,6 +6,7 @@ interface PriceDisplayProps {
   selectedFeed?: PriceFeed;
   isConnected: boolean;
   isConnecting: boolean;
+  feedAddress: string | null;
 }
 
 const PriceDisplay: React.FC<PriceDisplayProps> = ({
@@ -13,15 +14,26 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
   selectedFeed,
   isConnected,
   isConnecting,
+  feedAddress,
 }) => {
   const formatPrice = (value: number, exponent: number): string => {
     console.log('value', value);
     console.log('exponent', exponent);
     const formattedValue = value / Math.pow(10, Math.abs(exponent));
-    return formattedValue.toLocaleString('en-US', {
-      minimumFractionDigits: 3,
-      maximumFractionDigits: 3,
+    
+    // For prices under $10, show more precision
+    const isUnderTwo = formattedValue <= 100;
+    const decimals = isUnderTwo ? 10 : 3;
+    
+    let formatted = formattedValue.toLocaleString('en-US', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     });
+    
+    // Remove leading zeroes but keep one zero before decimal point
+    formatted = formatted.replace(/^0+(?=\d)/, '0');
+    
+    return formatted;
   };
 
   const getStatusColor = (): string => {
@@ -68,12 +80,27 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
         )}
       </div>
 
+      {feedAddress && selectedFeed && (
+        <div className="account-info">
+          <p className="account-text">
+            This is being read directly from the associated onchain account:{' '}
+            <a 
+              href={`https://explorer.solana.com/address/${feedAddress}?cluster=custom&customUrl=https%3A%2F%2Fdevnet.magicblock.app`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="account-link"
+            >
+              {feedAddress.slice(0, 4)}...{feedAddress.slice(-4)}
+            </a>
+          </p>
+        </div>
+      )}
+
       <style>{`
         .price-display {
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
           flex: 1;
           text-align: center;
           padding: 2rem;
@@ -142,7 +169,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
           align-items: center;
           justify-content: center;
           gap: 0.5rem;
-          margin-bottom: 2rem;
+          margin-bottom: 0rem;
           padding: 2rem;
           background: var(--bg-glass);
           border-radius: 24px;
@@ -175,7 +202,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
         }
 
         .price-value {
-          font-size: 6rem;
+          font-size: 4rem;
           font-weight: 700;
           line-height: 1;
           background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-gold) 100%);
@@ -207,66 +234,32 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
           opacity: 0.7;
         }
 
-        @media (max-width: 768px) {
-          .price-display {
-            padding: 1rem;
-          }
-
-          .feed-symbol {
-            font-size: 2rem;
-          }
-
-          .feed-name {
-            font-size: 1.125rem;
-          }
-
-          .price-container {
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-          }
-
-          .currency-symbol {
-            font-size: 2.5rem;
-            margin-top: -0.75rem;
-          }
-
-          .price-value {
-            font-size: 4rem;
-            min-width: 6ch;
-          }
-
-          .placeholder {
-            font-size: 1.5rem;
-          }
+        .account-info {
+          margin-top: 1rem;
+          max-width: 600px;
+          width: 100%;
+          text-align: center;
         }
 
-        @media (max-width: 480px) {
-          .feed-symbol {
-            font-size: 1.75rem;
-          }
-
-          .feed-name {
-            font-size: 1rem;
-          }
-
-          .price-container {
-            padding: 1rem;
-          }
-
-          .currency-symbol {
-            font-size: 2rem;
-            margin-top: -0.5rem;
-          }
-
-                      .price-value {
-              font-size: 3rem;
-              min-width: 5ch;
-            }
-
-          .placeholder {
-            font-size: 1.25rem;
-          }
+        .account-text {
+          font-size: 0.875rem;
+          color: var(--text-muted);
+          line-height: 1.6;
+          margin: 0;
         }
+
+        .account-link {
+          color: var(--text-primary);
+          text-decoration: none;
+          font-weight: 600;
+          transition: color 0.2s ease;
+        }
+
+        .account-link:hover {
+          color: var(--text-accent);
+        }
+
+
       `}</style>
     </div>
   );

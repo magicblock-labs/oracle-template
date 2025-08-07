@@ -16,6 +16,7 @@ interface UseSolanaWebSocketResult {
   isConnected: boolean;
   isConnecting: boolean;
   error: string | null;
+  feedAddress: string | null;
 }
 
 export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocketResult => {
@@ -23,6 +24,7 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedAddress, setFeedAddress] = useState<string | null>(null);
   
   const connectionRef = useRef<Connection | null>(null);
   const subscriptionIdRef = useRef<number | null>(null);
@@ -120,17 +122,20 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
       setPrice(null);
       setIsConnected(false);
       setIsConnecting(false);
+      setFeedAddress(null);
       return;
     }
 
     try {
       const feedAddress = deriveFeedAddress(selectedFeed.pyth_lazer_id.toString());
+      setFeedAddress(feedAddress.toString());
       subscribeToAccount(feedAddress);
     } catch (err) {
       console.error('Error deriving feed address:', err);
       setError('Failed to derive feed address');
       setIsConnected(false);
       setIsConnecting(false);
+      setFeedAddress(null);
     }
   }, [selectedFeed, deriveFeedAddress, subscribeToAccount]);
 
@@ -139,5 +144,6 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
     isConnected,
     isConnecting,
     error,
+    feedAddress,
   };
 }; 
