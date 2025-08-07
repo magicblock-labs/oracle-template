@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PriceFeed } from '../types';
 import priceFeedsData from '../../pyth_lazer_list.json';
 import { PublicKey } from '@solana/web3.js';
@@ -17,6 +17,7 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const accordionRef = useRef<HTMLDivElement>(null);
 
   const priceFeeds = priceFeedsData as PriceFeed[];
 
@@ -49,8 +50,25 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
     setSearchTerm('');
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accordionRef.current && !accordionRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
   return (
-    <div className="price-feed-accordion">
+    <div className="price-feed-accordion" ref={accordionRef}>
       <div 
         className="accordion-header"
         onClick={() => setIsOpen(!isOpen)}

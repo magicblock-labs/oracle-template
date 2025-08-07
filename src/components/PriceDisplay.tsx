@@ -75,7 +75,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
       {feedAddress && selectedFeed && (
         <div className="account-info">
           <p className="account-text">
-            This is being read directly from the associated onchain account:{' '}
+            This is processing directly from the associated onchain account:{' '}
             <a 
               href={`https://explorer.solana.com/address/${feedAddress}?cluster=custom&customUrl=https%3A%2F%2Fdevnet.magicblock.app`}
               target="_blank"
