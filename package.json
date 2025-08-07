@@ -1,7 +1,7 @@
 {
   "name": "solana-price-feed-dashboard",
   "version": "0.1.0",
-  "private": true,
+  "description": "A modern, real-time cryptocurrency price dashboard that connects to Magicblock Ephemeral Rollup to display Pyth Network price feeds",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,15 +10,10 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1",
-    "@pythnetwork/client": "^2.22.1",
-    "@pythnetwork/pyth-lazer-sdk": "^2.0.0",
-    "@pythnetwork/pyth-solana-receiver": "^0.10.2",
     "@solana/web3.js": "^1.87.6",
     "buffer": "^6.0.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "styled-jsx": "^5.1.1"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

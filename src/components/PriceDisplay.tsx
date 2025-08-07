@@ -4,8 +4,6 @@ import { PriceFeed } from '../types';
 interface PriceDisplayProps {
   price: number | null;
   selectedFeed?: PriceFeed;
-  isConnected: boolean;
-  isConnecting: boolean;
   feedAddress: string | null;
   updateCount: number;
 }
@@ -13,14 +11,18 @@ interface PriceDisplayProps {
 const PriceDisplay: React.FC<PriceDisplayProps> = ({
   price,
   selectedFeed,
-  isConnected,
-  isConnecting,
   feedAddress,
   updateCount,
 }) => {
-  const [startTime] = React.useState(Date.now());
+  const [startTime, setStartTime] = React.useState(Date.now());
   const [updatesPerSecond, setUpdatesPerSecond] = React.useState(0);
   const [msPerUpdate, setMsPerUpdate] = React.useState(0);
+
+  React.useEffect(() => {
+    setStartTime(Date.now());
+    setUpdatesPerSecond(0);
+    setMsPerUpdate(0);
+  }, [selectedFeed?.name]);
 
   React.useEffect(() => {
     if (updateCount > 0) {
@@ -147,7 +149,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
           border-radius: 24px;
           backdrop-filter: blur(20px);
           border: 1px solid var(--border-primary);
-          box-shadow: var(--shadow-xl);
+          box-shadow: var(--shadow-lg);
           position: relative;
           overflow: hidden;
           width: 100%; /* Added fixed width */
@@ -256,15 +258,8 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
           border-radius: 16px;
           backdrop-filter: blur(20px);
           border: 1px solid var(--border-primary);
-          box-shadow: var(--shadow-md);
-          transition: all 0.3s ease;
-          flex: 1;
-        }
-
-        .metric-block:hover {
-          background: var(--bg-card-hover);
-          transform: translateY(-2px);
           box-shadow: var(--shadow-lg);
+          flex: 1;
         }
 
         .metric-label {

@@ -1,22 +1,6 @@
-# Solana Price Feed Dashboard
+# Magicblock Pyth Price Feed 
 
-A modern, real-time cryptocurrency price dashboard that connects to Solana blockchain to display Pyth Network price feeds. Features a sleek UI with searchable price feed selection and live price updates via WebSocket connections.
-
-## Features
-
-- 🔄 **Real-time Price Updates**: WebSocket connection to Solana blockchain for live data
-- 🔍 **Searchable Price Feeds**: Filter through 100+ cryptocurrency price feeds
-- 📱 **Responsive Design**: Modern, sleek UI that works on all devices
-- ⚡ **Fast Performance**: Built with React and TypeScript for optimal performance
-- 🎨 **Glass Morphism UI**: Beautiful gradient backgrounds with backdrop blur effects
-
-## Tech Stack
-
-- **Frontend**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Blockchain**: Solana Web3.js
-- **Styling**: CSS-in-JS with styled-jsx
-- **Data Source**: Pyth Network price feeds
+A modern, real-time cryptocurrency price dashboard that connects to a Magicblock Ephemeral Rollup to display Pyth Network price feeds.
 
 ## Prerequisites
 
@@ -96,35 +80,6 @@ const feedAddress = PublicKey.findProgramAddressSync(
 
 Where `PROGRAM_ID` is `PriCems5tHihc6UDXDjzjeawomAwBduWMGAi8ZUjppd`.
 
-## Troubleshooting
-
-### Common Issues
-
-1. **WebSocket Connection Errors**: Check your internet connection and ensure you're not behind a restrictive firewall
-2. **Price Data Not Loading**: Some feeds may not be active or available. Try selecting a different cryptocurrency
-3. **Build Errors**: Make sure all dependencies are installed with `npm install`
-
-### Browser Compatibility
-
-The application works best with modern browsers that support:
-- ES2020 features
-- WebSocket connections
-- CSS backdrop-filter
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
 ## License
 
 This project is open source and available under the MIT License.
-
-## Acknowledgments
-
-- [Pyth Network](https://pyth.network) for providing decentralized price feeds
-- [Solana](https://solana.com) for the high-performance blockchain infrastructure
-- Price feed data sourced from Pyth Lazer program 

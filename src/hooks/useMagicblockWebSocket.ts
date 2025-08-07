@@ -5,12 +5,12 @@ import { Buffer } from 'buffer';
 
 
 
-const ER_RPC_URL = 'https://devnet.magicblock.app';
-const ER_WS_URL = "wss://devnet.magicblock.app";
-const PROGRAM_ID = new PublicKey('PriCems5tHihc6UDXDjzjeawomAwBduWMGAi8ZUjppd'); // Magicblock Pyth Program ID
+const MAGICBLOCK_RPC_URL = 'https://devnet.magicblock.app';
+const MAGICBLOCK_WS_URL = "wss://devnet.magicblock.app";
+const PROGRAM_ID = new PublicKey('PriCems5tHihc6UDXDjzjeawomAwBduWMGAi8ZUjppd');
 
 
-interface UseSolanaWebSocketResult {
+interface UseMagicblockWebSocketResult {
   price: number | null;
   isConnected: boolean;
   isConnecting: boolean;
@@ -19,7 +19,7 @@ interface UseSolanaWebSocketResult {
   updateCount: number;
 }
 
-export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocketResult => {
+export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockWebSocketResult => {
   const [price, setPrice] = useState<number | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -31,6 +31,7 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
   const subscriptionIdRef = useRef<number | null>(null);
 
   const deriveFeedAddress = useCallback((feedName: string): PublicKey => {
+    console.log('Feed name:', feedName);
     return PublicKey.findProgramAddressSync(
       [
         Buffer.from('price_feed'),
@@ -44,12 +45,10 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
   const parseAccountData = useCallback((accountInfo: AccountInfo<Buffer> | null): number | null => {
     if (!accountInfo || !accountInfo.data) return null;
     console.log('account data length', accountInfo.data.length);
-    // const priceFeed = await connectionRef.current?.getParsedAccountInfo(new PublicKey("71wtTRDY8Gxgw56bXFt2oc6qeAbTxzStdNiC425Z51sr"));
-    // console.log('priceFeed', priceFeed);
 
     try {
       const dataView = new DataView(accountInfo.data.buffer);
-      const priceOffset = 73;
+      const priceOffset = 73; // This could change if account structure changes in future.
       const priceInt = Number(dataView.getBigUint64(priceOffset, true));
       return priceInt;
     } catch (err) {
@@ -102,12 +101,12 @@ export const useSolanaWebSocket = (selectedFeed?: PriceFeed): UseSolanaWebSocket
   // Initialize connection
   useEffect(() => {
     try {
-      connectionRef.current = new Connection(ER_RPC_URL, {
-        wsEndpoint: ER_WS_URL,
+      connectionRef.current = new Connection(MAGICBLOCK_RPC_URL, {
+        wsEndpoint: MAGICBLOCK_WS_URL,
       });
     } catch (err) {
       console.error('Error creating connection:', err);
-      setError('Failed to create Solana connection');
+      setError('Failed to create Magicblock ephemeral rollup connection');
     }
 
     return () => {

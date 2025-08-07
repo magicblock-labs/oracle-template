@@ -7,7 +7,6 @@ import priceFeedsData from '../pyth_lazer_list.json';
 
 function App() {
   const [selectedFeed, setSelectedFeed] = useState<PriceFeed | undefined>(
-    // Start with BTCUSD as default
     (priceFeedsData as PriceFeed[]).find(feed => feed.name === 'BTCUSD')
   );
 
@@ -35,7 +34,7 @@ function App() {
       <div className="container">
         <header className="header">
           <h1 className="title">Magicblock x Pyth</h1>
-          <p className="subtitle">This is an example showing how to integrate and use Pyth from a <a href="https://docs.magicblock.gg/pages/get-started/introduction/ephemeral-rollup" target="_blank" rel="noopener noreferrer">Magicblock Ephemeral Rollup</a>. Get started using Magicblock <a href="https://docs.magicblock.gg/pages/get-started/how-integrate-your-program/quickstart" target="_blank" rel="noopener noreferrer">here</a>.</p>
+          <p className="subtitle">This is an example showing how to integrate and use Pyth Price Feeds from a <a href="https://docs.magicblock.gg/pages/get-started/introduction/ephemeral-rollup" target="_blank" rel="noopener noreferrer">Magicblock Ephemeral Rollup</a>. Get started using Magicblock <a href="https://docs.magicblock.gg/pages/get-started/how-integrate-your-program/quickstart" target="_blank" rel="noopener noreferrer">here</a>.</p>
         </header>
 
         <div className="content">
@@ -57,8 +56,6 @@ function App() {
           <PriceDisplay
             price={price}
             selectedFeed={selectedFeed}
-            isConnected={isConnected}
-            isConnecting={isConnecting}
             feedAddress={feedAddress}
             updateCount={updateCount}
           />
@@ -79,6 +76,10 @@ function App() {
             on{' '}
             <a href="https://magicblock.xyz" target="_blank" rel="noopener noreferrer">
               Magicblock
+            </a>
+            {' • '}
+            <a href="https://github.com/magicblock-labs/defi-template" target="_blank" rel="noopener noreferrer">
+              Fork this repo on GitHub
             </a>
           </p>
         </footer>
@@ -168,7 +169,7 @@ function App() {
           border-radius: 24px;
           backdrop-filter: blur(20px);
           border: 1px solid var(--border-primary);
-          box-shadow: var(--shadow-md);
+          box-shadow: var(--shadow-lg);
           transition: all 0.3s ease;
         }
 
