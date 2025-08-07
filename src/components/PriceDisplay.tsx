@@ -1,0 +1,275 @@
+import React from 'react';
+import { PriceFeed } from '../types';
+
+interface PriceDisplayProps {
+  price: number | null;
+  selectedFeed?: PriceFeed;
+  isConnected: boolean;
+  isConnecting: boolean;
+}
+
+const PriceDisplay: React.FC<PriceDisplayProps> = ({
+  price,
+  selectedFeed,
+  isConnected,
+  isConnecting,
+}) => {
+  const formatPrice = (value: number, exponent: number): string => {
+    console.log('value', value);
+    console.log('exponent', exponent);
+    const formattedValue = value / Math.pow(10, Math.abs(exponent));
+    return formattedValue.toLocaleString('en-US', {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    });
+  };
+
+  const getStatusColor = (): string => {
+    if (isConnecting) return '#ffa500';
+    if (isConnected) return '#4ade80';
+    return '#ef4444';
+  };
+
+  const getStatusText = (): string => {
+    if (isConnecting) return 'Connecting...';
+    if (isConnected) return 'Connected';
+    return 'Disconnected';
+  };
+
+  return (
+    <div className="price-display">
+      <div className="status-indicator">
+        <div 
+          className="status-dot"
+          style={{ backgroundColor: getStatusColor() }}
+        />
+        <span className="status-text">{getStatusText()}</span>
+      </div>
+
+      {selectedFeed && (
+        <div className="feed-info">
+          <h2 className="feed-symbol">{selectedFeed.symbol}</h2>
+          <p className="feed-name">{selectedFeed.description}</p>
+        </div>
+      )}
+
+      <div className="price-container">
+        {price !== null && selectedFeed ? (
+          <>
+            <span className="currency-symbol">$</span>
+            <span className="price-value">
+              {formatPrice(price, selectedFeed.exponent)}
+            </span>
+          </>
+        ) : (
+          <span className="placeholder">
+            {selectedFeed ? 'Loading price...' : 'Select a price feed'}
+          </span>
+        )}
+      </div>
+
+      <style>{`
+        .price-display {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          flex: 1;
+          text-align: center;
+          padding: 2rem;
+        }
+
+        .status-indicator {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 2rem;
+          padding: 0.75rem 1.25rem;
+          background: var(--bg-card);
+          border-radius: 24px;
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--border-primary);
+          box-shadow: var(--shadow-md);
+          transition: all 0.3s ease;
+        }
+
+        .status-indicator:hover {
+          background: var(--bg-card-hover);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-lg);
+        }
+
+        .status-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          transition: all 0.3s ease;
+          box-shadow: 0 0 10px currentColor;
+        }
+
+        .status-text {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: var(--text-secondary);
+          letter-spacing: 0.025em;
+        }
+
+        .feed-info {
+          margin-bottom: 3rem;
+          max-width: 600px;
+        }
+
+        .feed-symbol {
+          font-size: 2.5rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-accent) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          letter-spacing: -0.02em;
+        }
+
+        .feed-name {
+          font-size: 1.25rem;
+          color: var(--text-muted);
+          font-weight: 400;
+          line-height: 1.5;
+        }
+
+        .price-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          margin-bottom: 2rem;
+          padding: 2rem;
+          background: var(--bg-glass);
+          border-radius: 24px;
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--border-primary);
+          box-shadow: var(--shadow-xl);
+          position: relative;
+          overflow: hidden;
+          width: 100%; /* Added fixed width */
+          max-width: 600px; /* Added max-width */
+        }
+
+        .price-container::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, var(--border-accent), transparent);
+        }
+
+        .currency-symbol {
+          font-size: 3.5rem;
+          font-weight: 300;
+          color: var(--text-muted);
+          margin-top: -1rem;
+          align-self: flex-start;
+          opacity: 0.8;
+        }
+
+        .price-value {
+          font-size: 6rem;
+          font-weight: 700;
+          line-height: 1;
+          background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-gold) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          text-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+          letter-spacing: -0.02em;
+          animation: pulse 2s ease-in-out infinite;
+          font-variant-numeric: tabular-nums;
+          min-width: 8ch;
+          text-align: center;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.8;
+          }
+        }
+
+        .placeholder {
+          font-size: 2rem;
+          font-weight: 400;
+          color: var(--text-muted);
+          font-style: italic;
+          opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+          .price-display {
+            padding: 1rem;
+          }
+
+          .feed-symbol {
+            font-size: 2rem;
+          }
+
+          .feed-name {
+            font-size: 1.125rem;
+          }
+
+          .price-container {
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .currency-symbol {
+            font-size: 2.5rem;
+            margin-top: -0.75rem;
+          }
+
+          .price-value {
+            font-size: 4rem;
+            min-width: 6ch;
+          }
+
+          .placeholder {
+            font-size: 1.5rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .feed-symbol {
+            font-size: 1.75rem;
+          }
+
+          .feed-name {
+            font-size: 1rem;
+          }
+
+          .price-container {
+            padding: 1rem;
+          }
+
+          .currency-symbol {
+            font-size: 2rem;
+            margin-top: -0.5rem;
+          }
+
+                      .price-value {
+              font-size: 3rem;
+              min-width: 5ch;
+            }
+
+          .placeholder {
+            font-size: 1.25rem;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default PriceDisplay; 

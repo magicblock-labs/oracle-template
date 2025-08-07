@@ -1,0 +1,291 @@
+import React, { useState, useMemo } from 'react';
+import { PriceFeed } from '../types';
+import priceFeedsData from '../../pyth_lazer_list.json';
+
+interface PriceFeedAccordionProps {
+  onSelectFeed: (feed: PriceFeed) => void;
+  selectedFeed?: PriceFeed;
+}
+
+const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
+  onSelectFeed,
+  selectedFeed,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const priceFeeds = priceFeedsData as PriceFeed[];
+
+  const filteredFeeds = useMemo(() => {
+    if (!searchTerm) return priceFeeds;
+    
+    const term = searchTerm.toLowerCase();
+    return priceFeeds.filter(
+      feed =>
+        feed.name.toLowerCase().includes(term) ||
+        feed.description.toLowerCase().includes(term) ||
+        feed.symbol.toLowerCase().includes(term)
+    );
+  }, [searchTerm, priceFeeds]);
+
+  const handleSelectFeed = (feed: PriceFeed) => {
+    onSelectFeed(feed);
+    setIsOpen(false);
+    setSearchTerm('');
+  };
+
+  return (
+    <div className="price-feed-accordion">
+      <div 
+        className="accordion-header"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="header-content">
+          <span className="selected-feed">
+            {selectedFeed ? selectedFeed.name : 'Select a Price Feed'}
+          </span>
+          <span className={`arrow ${isOpen ? 'open' : ''}`}>▼</span>
+        </div>
+      </div>
+      
+      {isOpen && (
+        <div className="accordion-content">
+          <div className="search-container">
+            <input
+              type="text"
+              placeholder="Search price feeds..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+              autoFocus
+            />
+          </div>
+          
+          <div className="feeds-list">
+            {filteredFeeds.map((feed) => (
+              <div
+                key={feed.pyth_lazer_id}
+                className={`feed-item ${selectedFeed?.pyth_lazer_id === feed.pyth_lazer_id ? 'selected' : ''}`}
+                onClick={() => handleSelectFeed(feed)}
+              >
+                <div className="feed-name">{feed.name}</div>
+                <div className="feed-description">{feed.description}</div>
+              </div>
+            ))}
+            
+            {filteredFeeds.length === 0 && (
+              <div className="no-results">No price feeds found</div>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <style>{`
+        .price-feed-accordion {
+          background: var(--bg-card);
+          border-radius: 16px;
+          backdrop-filter: blur(20px);
+          border: 1px solid var(--border-primary);
+          max-width: 600px;
+          margin: 0 auto 2rem;
+          box-shadow: var(--shadow-lg);
+          transition: all 0.3s ease;
+          overflow: hidden;
+        }
+
+        .price-feed-accordion:hover {
+          border-color: var(--border-accent);
+          box-shadow: var(--shadow-xl);
+          transform: translateY(-2px);
+        }
+
+        .accordion-header {
+          padding: 1.25rem 1.5rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: var(--bg-glass);
+          position: relative;
+        }
+
+        .accordion-header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, var(--border-accent), transparent);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .accordion-header:hover::before {
+          opacity: 1;
+        }
+
+        .accordion-header:hover {
+          background: var(--bg-card-hover);
+        }
+
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .selected-feed {
+          font-weight: 600;
+          font-size: 1.125rem;
+          color: var(--text-primary);
+          letter-spacing: 0.025em;
+        }
+
+        .arrow {
+          transition: all 0.3s ease;
+          font-size: 0.875rem;
+          color: var(--text-muted);
+          font-weight: 600;
+        }
+
+        .arrow.open {
+          transform: rotate(180deg);
+          color: var(--text-accent);
+        }
+
+        .accordion-content {
+          border-top: 1px solid var(--border-secondary);
+          background: var(--bg-secondary);
+        }
+
+        .search-container {
+          padding: 1.25rem 1.5rem;
+          border-bottom: 1px solid var(--border-secondary);
+          background: var(--bg-glass);
+        }
+
+        .search-input {
+          width: 100%;
+          padding: 0.875rem 1.25rem;
+          border: 1px solid var(--border-primary);
+          border-radius: 12px;
+          background: var(--bg-card);
+          color: var(--text-primary);
+          font-size: 1rem;
+          outline: none;
+          transition: all 0.2s ease;
+          font-weight: 500;
+        }
+
+        .search-input::placeholder {
+          color: var(--text-muted);
+          font-weight: 400;
+        }
+
+        .search-input:focus {
+          border-color: var(--border-accent);
+          background: var(--bg-card-hover);
+          box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+
+        .feeds-list {
+          max-height: 320px;
+          overflow-y: auto;
+        }
+
+        .feed-item {
+          padding: 1.25rem 1.5rem;
+          cursor: pointer;
+          border-bottom: 1px solid var(--border-secondary);
+          transition: all 0.2s ease;
+          position: relative;
+        }
+
+        .feed-item::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 0;
+          background: var(--accent-gradient);
+          transition: width 0.2s ease;
+        }
+
+        .feed-item:hover {
+          background: var(--bg-card);
+          transform: translateX(4px);
+        }
+
+        .feed-item:hover::before {
+          width: 3px;
+        }
+
+        .feed-item.selected {
+          background: var(--bg-card-hover);
+          border-color: var(--border-accent);
+        }
+
+        .feed-item.selected::before {
+          width: 3px;
+        }
+
+        .feed-item:last-child {
+          border-bottom: none;
+        }
+
+        .feed-name {
+          font-weight: 600;
+          font-size: 1rem;
+          margin-bottom: 0.375rem;
+          color: var(--text-primary);
+          letter-spacing: 0.025em;
+        }
+
+        .feed-description {
+          font-size: 0.875rem;
+          color: var(--text-muted);
+          line-height: 1.5;
+          font-weight: 400;
+        }
+
+        .no-results {
+          padding: 3rem 2rem;
+          text-align: center;
+          color: var(--text-muted);
+          font-style: italic;
+          font-size: 1rem;
+          background: var(--bg-glass);
+        }
+
+        @media (max-width: 768px) {
+          .accordion-header {
+            padding: 1rem 1.25rem;
+          }
+
+          .selected-feed {
+            font-size: 1rem;
+          }
+
+          .search-container {
+            padding: 1rem 1.25rem;
+          }
+
+          .search-input {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+          }
+
+          .feed-item {
+            padding: 1rem 1.25rem;
+          }
+
+          .feeds-list {
+            max-height: 280px;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default PriceFeedAccordion; 
