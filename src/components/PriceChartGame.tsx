@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-
+            
 interface PriceChartGameProps {
   price: number | null; // normalized/display price (already adjusted for exponent)
   feedKey: string | null; // changes when feed changes to reset internal state
@@ -18,6 +18,9 @@ const BIRD_X = 35; // px from left
 const GRAVITY = 1200; // px/s^2
 const FLAP_VELOCITY = -200; // px/s
 const BIRD_SIZE = 28; // sprite size in px
+const SPAWN_INTERVAL_MS = 1000;
+const OBSTACLE_WIDTH_PX = 14;
+const MIN_GAP_FROM_LINE_PX = 150; // ensure bar bottom is at least this far from the line at spawn
 
 const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -31,6 +34,11 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
   const [scoreSeconds, setScoreSeconds] = useState(0);
   const gameStartRef = useRef<number | null>(null);
   const idleStartRef = useRef<number | null>(performance.now());
+  const gameOverAtRef = useRef<number | null>(null);
+
+  type Obstacle = { spawnT: number; height: number; width: number };
+  const obstaclesRef = useRef<Obstacle[]>([]);
+  const lastSpawnRef = useRef<number | null>(null);
 
   const birdYRef = useRef<number>(30);
   const birdVYRef = useRef<number>(0);
@@ -54,9 +62,13 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
     setGameState('idle');
     setScoreSeconds(0);
     gameStartRef.current = null;
+    idleStartRef.current = performance.now();
+    gameOverAtRef.current = null;
     birdYRef.current = 30;
     birdVYRef.current = 0;
     lastRangeRef.current = null;
+    obstaclesRef.current = [];
+    lastSpawnRef.current = null;
   }, [feedKey]);
 
   // Collect time series on price updates
@@ -120,12 +132,19 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
       } else if (gameState === 'playing') {
         birdVYRef.current = FLAP_VELOCITY;
       } else if (gameState === 'gameover') {
+        // lock restart for 3 seconds after game over
+        if (gameOverAtRef.current && performance.now() - gameOverAtRef.current < 1000) {
+          return;
+        }
         // restart
         setGameState('idle');
         setScoreSeconds(0);
         gameStartRef.current = null;
         birdYRef.current = 30;
         birdVYRef.current = 0;
+        obstaclesRef.current = [];
+        lastSpawnRef.current = null;
+        gameOverAtRef.current = null;
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -219,6 +238,12 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
 
       const now = Date.now();
 
+      // Cleanup old obstacles (off-screen)
+      obstaclesRef.current = obstaclesRef.current.filter(ob => {
+        const xRight = timeToX(ob.spawnT, now, w);
+        return xRight > 20; // remove once the bar's right edge reaches the left padding
+      });
+
       // Draw price line
       if (range && series.length > 0) {
         const visible = series.filter(p => p.t >= now - WINDOW_MS);
@@ -237,6 +262,43 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
           ctx.stroke();
           ctx.restore();
         }
+      }
+
+      // Spawn obstacles after 8s of play, at fixed intervals
+      if (gameState === 'playing' && gameStartRef.current != null) {
+        const elapsedMs = performance.now() - gameStartRef.current;
+        if (elapsedMs >= 5000) {
+          const canSpawn = !lastSpawnRef.current || (performance.now() - lastSpawnRef.current >= SPAWN_INTERVAL_MS);
+          if (canSpawn && range) {
+            // Determine safe height based on the line Y at right edge
+            const xRight = w - 21; // inside padding
+            const lineY = getLineYAtX(xRight, now, w, h, range);
+            if (lineY != null) {
+              const minHeight = 20;
+              const maxHeight = Math.max(minHeight, lineY - MIN_GAP_FROM_LINE_PX);
+              if (maxHeight > minHeight) {
+                const height = minHeight + Math.random() * (maxHeight - minHeight);
+                obstaclesRef.current.push({ spawnT: now, height, width: OBSTACLE_WIDTH_PX * (window.devicePixelRatio || 1) });
+                lastSpawnRef.current = performance.now();
+              }
+            }
+          }
+        }
+      }
+
+      // Draw obstacles (top red bars)
+      if (obstaclesRef.current.length) {
+        ctx.save();
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = 'rgba(239, 68, 68, 0.4)';
+        ctx.shadowBlur = 6;
+        for (const ob of obstaclesRef.current) {
+          const xRight = timeToX(ob.spawnT, now, w);
+          const xLeft = xRight - ob.width;
+          const height = ob.height;
+          ctx.fillRect(xLeft, 0, ob.width, height);
+        }
+        ctx.restore();
       }
 
       // Draw logo / bird
@@ -270,6 +332,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
           birdVYRef.current = 0;
         }
         if (currentBirdY > bottomBound) {
+          if (gameOverAtRef.current == null) gameOverAtRef.current = performance.now();
           setGameState('gameover');
         }
 
@@ -280,6 +343,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
             const birdCenterY = currentBirdY * (window.devicePixelRatio || 1);
             const threshold = (BIRD_SIZE / 2) * (window.devicePixelRatio || 1);
             if (Math.abs(birdCenterY - lineY) <= threshold) {
+              if (gameOverAtRef.current == null) gameOverAtRef.current = performance.now();
               setGameState('gameover');
             }
           }
@@ -326,7 +390,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
           }
         }
       } else if (gameState === 'playing') {
-        const scoreText = `Score: ${Math.floor(scoreSeconds)}s`;
+        const scoreText = `Score: ${Math.floor(scoreSeconds)}`;
         const dpr = window.devicePixelRatio || 1;
         ctx.fillText(scoreText, (w - 120 * dpr), 16 * dpr);
       } else if (gameState === 'gameover') {
@@ -349,7 +413,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
         ctx.fillText('Game Over', centerX, centerY - 20 * dpr);
 
         ctx.font = `${20 * dpr}px ui-sans-serif, system-ui, -apple-system`;
-        ctx.fillText(`Score: ${Math.floor(scoreSeconds)}s`, centerX, centerY + 6 * dpr);
+        ctx.fillText(`Score: ${Math.floor(scoreSeconds)}`, centerX, centerY + 6 * dpr);
 
         ctx.font = `${16 * dpr}px ui-sans-serif, system-ui, -apple-system`;
         ctx.fillStyle = '#e5e7eb';
