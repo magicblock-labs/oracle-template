@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
             
 interface PriceChartGameProps {
   price: number | null; // normalized/display price (already adjusted for exponent)
@@ -14,13 +14,54 @@ const WINDOW_MS = 5000; // show last 30s of data
 const MAX_POINTS = 600; // cap stored points
 
 // Game constants
-const BIRD_X = 35; // px from left
+const BIRD_X = 85; // px from left
 const GRAVITY = 1200; // px/s^2
 const FLAP_VELOCITY = -200; // px/s
-const BIRD_SIZE = 28; // sprite size in px
+const BIRD_SIZE = 24; // sprite size in px
 const SPAWN_INTERVAL_MS = 1000;
 const OBSTACLE_WIDTH_PX = 14;
-const MIN_GAP_FROM_LINE_PX = 150; // ensure bar bottom is at least this far from the line at spawn
+const MIN_GAP_FROM_LINE_PX = 60; // ensure bar bottom is at least this far from the line at spawn
+const REVEAL_DURATION_MS = 280; // how long a new bar takes to fully reveal from the right
+
+// Chart paddings
+const LEFT_PAD = 56;
+const RIGHT_PAD = 20;
+const TOP_PAD = 20;
+const BOTTOM_PAD = 20;
+
+// Desired on-screen position for the latest price within the vertical range [0=bottom, 1=top]
+const PRICE_POS_FRACTION = 0.7; // 40% from bottom
+
+// Nice ticks helpers
+const TARGET_TICK_COUNT = 5;
+const MIN_ABS_STEP = 1e-6; // minimum absolute step between ticks to avoid tiny deltas
+
+const niceNumber = (value: number, round: boolean): number => {
+  // Returns a 'nice' number approximately equal to value.
+  // Rounds the number if round = true, otherwise takes ceiling.
+  if (value <= 0 || !isFinite(value)) return 0;
+  const exponent = Math.floor(Math.log10(value));
+  const fraction = value / Math.pow(10, exponent);
+  let niceFraction: number;
+  if (round) {
+    if (fraction < 1.5) niceFraction = 1;
+    else if (fraction < 3) niceFraction = 2;
+    else if (fraction < 7) niceFraction = 5;
+    else niceFraction = 10;
+  } else {
+    if (fraction <= 1) niceFraction = 1;
+    else if (fraction <= 2) niceFraction = 2;
+    else if (fraction <= 5) niceFraction = 5;
+    else niceFraction = 10;
+  }
+  return niceFraction * Math.pow(10, exponent);
+};
+
+const snapHalfSpanToNice = (halfSpan: number): number => {
+  const rawStep = (halfSpan * 2) / (TARGET_TICK_COUNT - 1);
+  const step = Math.max(MIN_ABS_STEP, niceNumber(rawStep, true));
+  return (step * (TARGET_TICK_COUNT - 1)) / 2;
+};
 
 const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -28,7 +69,10 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   const [series, setSeries] = useState<SamplePoint[]>([]);
-  const lastRangeRef = useRef<{ min: number; max: number } | null>(null);
+  const [axisRange, setAxisRange] = useState<{ min: number; max: number } | null>(null);
+  const startPriceRef = useRef<number | null>(null);
+  const axisCenterRef = useRef<number | null>(null);
+  const axisHalfSpanRef = useRef<number>(0);
 
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [scoreSeconds, setScoreSeconds] = useState(0);
@@ -36,7 +80,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
   const idleStartRef = useRef<number | null>(performance.now());
   const gameOverAtRef = useRef<number | null>(null);
 
-  type Obstacle = { spawnT: number; height: number; width: number };
+  type Obstacle = { spawnT: number; width: number; gapFromLinePx: number; initialHeight: number };
   const obstaclesRef = useRef<Obstacle[]>([]);
   const lastSpawnRef = useRef<number | null>(null);
 
@@ -66,9 +110,13 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
     gameOverAtRef.current = null;
     birdYRef.current = 30;
     birdVYRef.current = 0;
-    lastRangeRef.current = null;
     obstaclesRef.current = [];
     lastSpawnRef.current = null;
+    // Axis related resets
+    setAxisRange(null);
+    startPriceRef.current = null;
+    axisCenterRef.current = null;
+    axisHalfSpanRef.current = 0;
   }, [feedKey]);
 
   // Collect time series on price updates
@@ -83,6 +131,68 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
       if (trimmed.length > MAX_POINTS) trimmed = trimmed.slice(trimmed.length - MAX_POINTS);
       return trimmed;
     });
+  }, [price]);
+
+  // Initialize axis based on first price; then smoothly recenters/expands to keep price near center
+  useEffect(() => {
+    if (price == null || Number.isNaN(price)) return;
+
+    if (startPriceRef.current == null) {
+      startPriceRef.current = price;
+      const baseHalfSpan = Math.max(1e-9, Math.abs(price) * 0.001); // ~±0.1%
+      const halfSpan = snapHalfSpanToNice(baseHalfSpan);
+      // Center so that price appears at PRICE_POS_FRACTION within the range
+      const center = price + (PRICE_POS_FRACTION - 0.5) * (2 * halfSpan);
+      axisCenterRef.current = center;
+      axisHalfSpanRef.current = halfSpan;
+      setAxisRange({ min: center - halfSpan, max: center + halfSpan });
+      return;
+    }
+
+    // Proactive recenter/resize
+    let center = axisCenterRef.current ?? price;
+    let halfSpan = axisHalfSpanRef.current || Math.max(1e-9, Math.abs(price) * 0.001);
+
+    // Compute the target center that would place the price at PRICE_POS_FRACTION
+    const targetCenter = price + (PRICE_POS_FRACTION - 0.5) * (2 * halfSpan);
+
+    const lower = center - halfSpan;
+    const upper = center + halfSpan;
+
+    // Bounds in terms of distance from center
+    const distance = price - center;
+    const absDistance = Math.abs(distance);
+
+    let nextCenter = center;
+    let nextHalfSpan = halfSpan;
+
+    // Define inner and outer bands as fractions of current half span
+    const innerBand = 0.25 * halfSpan;   // within 25%: no change
+    const midBand = 0.55 * halfSpan;     // within 55%: slight recenter
+    const outerBand = 0.8 * halfSpan;    // beyond 80%: stronger recenter
+    const edgeBand = 0.92 * halfSpan;    // near edge: expand span gradually
+
+    if (absDistance > innerBand) {
+      // Smoothly move center toward target placement (biasing to 40% from bottom)
+      const desiredShift = targetCenter - center;
+      const k = absDistance > outerBand ? 0.25 : absDistance > midBand ? 0.12 : 0.06; // smoothing factor
+      nextCenter = center + k * desiredShift;
+    }
+
+    if (price < lower + (halfSpan * (1 - edgeBand / halfSpan)) || price > upper - (halfSpan * (1 - edgeBand / halfSpan))) {
+      // Near edges: grow span slightly to add headroom
+      nextHalfSpan = halfSpan * 1.02; // 2% growth
+    }
+
+    // Snap half-span to a nice step so tick values are reasonable
+    nextHalfSpan = snapHalfSpanToNice(nextHalfSpan);
+
+    // Update axis range if changed
+    if (nextCenter !== center || nextHalfSpan !== halfSpan) {
+      axisCenterRef.current = nextCenter;
+      axisHalfSpanRef.current = nextHalfSpan;
+      setAxisRange({ min: nextCenter - nextHalfSpan, max: nextCenter + nextHalfSpan });
+    }
   }, [price]);
 
   // Resize canvas to container
@@ -151,16 +261,6 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [gameState]);
 
-  // Compute y-range based on current price ±5%
-  const range = useMemo(() => {
-    if (price == null || Number.isNaN(price)) return lastRangeRef.current || null;
-    const min = price * 0.9995;
-    const max = price * 1.001;
-    const r = { min, max };
-    lastRangeRef.current = r;
-    return r;
-  }, [price]);
-
   // Helpers to map data to canvas coordinates
   const getContextAndSize = (): { ctx: CanvasRenderingContext2D; w: number; h: number; dpr: number } | null => {
     const canvas = canvasRef.current;
@@ -177,13 +277,13 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
     const leftT = now - WINDOW_MS;
     const rightT = now;
     const clamped = Math.max(leftT, Math.min(rightT, t));
-    const x = ((clamped - leftT) / (rightT - leftT)) * (w - 40) + 20; // padding 20
+    const x = ((clamped - leftT) / (rightT - leftT)) * (w - LEFT_PAD - RIGHT_PAD) + LEFT_PAD;
     return x;
   };
 
   const valueToY = (v: number, h: number, r: { min: number; max: number }) => {
-    const top = 20;
-    const bottom = h - 20;
+    const top = TOP_PAD;
+    const bottom = h - BOTTOM_PAD;
     const clamped = Math.max(r.min, Math.min(r.max, v));
     const y = bottom - ((clamped - r.min) / (r.max - r.min)) * (bottom - top);
     return y;
@@ -193,7 +293,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
     if (series.length < 2) return null;
     // Convert x back to time
     const leftT = now - WINDOW_MS;
-    const u = (xPx - 20) / (w - 40);
+    const u = (xPx - LEFT_PAD) / (w - LEFT_PAD - RIGHT_PAD);
     const t = leftT + u * WINDOW_MS;
 
     // Find surrounding points
@@ -205,6 +305,27 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
     const frac = p1.t === p0.t ? 0 : (t - p0.t) / (p1.t - p0.t);
     const v = p0.v + frac * (p1.v - p0.v);
     return valueToY(v, h, r);
+  };
+
+  // Tick helpers
+  const computeTicks = (min: number, max: number, targetCount = 5): number[] => {
+    if (!isFinite(min) || !isFinite(max)) return [];
+    if (max <= min) return [min, max];
+    const span = max - min;
+    const step = span / (targetCount - 1);
+    const ticks: number[] = [];
+    for (let i = 0; i < targetCount; i++) ticks.push(min + step * i);
+    return ticks;
+  };
+
+  const formatTick = (v: number): string => {
+    const abs = Math.abs(v);
+    let decimals = 2;
+    if (abs < 1) decimals = 6;
+    else if (abs < 10) decimals = 5;
+    else if (abs < 100) decimals = 4;
+    else if (abs < 1000) decimals = 3;
+    return v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   };
 
   // Main draw loop
@@ -241,8 +362,41 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
       // Cleanup old obstacles (off-screen)
       obstaclesRef.current = obstaclesRef.current.filter(ob => {
         const xRight = timeToX(ob.spawnT, now, w);
-        return xRight > 20; // remove once the bar's right edge reaches the left padding
+        return xRight > LEFT_PAD; // remove once the bar's right edge reaches the left padding
       });
+
+      const range = axisRange;
+
+      // Draw y-axis grid and labels
+      if (range) {
+        const ticks = computeTicks(range.min, range.max, 5);
+        ctx.save();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-primary') || 'rgba(255,255,255,0.1)';
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary') || '#cbd5e1';
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        ctx.font = `${12 * (window.devicePixelRatio || 1)}px ui-sans-serif, system-ui, -apple-system`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        for (const tVal of ticks) {
+          const y = valueToY(tVal, h, range);
+          // grid line
+          ctx.beginPath();
+          ctx.moveTo(LEFT_PAD, y);
+          ctx.lineTo(w - RIGHT_PAD, y);
+          ctx.stroke();
+          // label
+          ctx.fillStyle = textColor;
+          const label = formatTick(tVal);
+          ctx.fillText(label, 6 * (window.devicePixelRatio || 1), y);
+        }
+        // y-axis line
+        ctx.beginPath();
+        ctx.moveTo(LEFT_PAD, TOP_PAD);
+        ctx.lineTo(LEFT_PAD, h - BOTTOM_PAD);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Draw price line
       if (range && series.length > 0) {
@@ -271,14 +425,15 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
           const canSpawn = !lastSpawnRef.current || (performance.now() - lastSpawnRef.current >= SPAWN_INTERVAL_MS);
           if (canSpawn && range) {
             // Determine safe height based on the line Y at right edge
-            const xRight = w - 21; // inside padding
+            const xRight = w - RIGHT_PAD - 1; // inside padding
             const lineY = getLineYAtX(xRight, now, w, h, range);
             if (lineY != null) {
               const minHeight = 20;
               const maxHeight = Math.max(minHeight, lineY - MIN_GAP_FROM_LINE_PX);
               if (maxHeight > minHeight) {
                 const height = minHeight + Math.random() * (maxHeight - minHeight);
-                obstaclesRef.current.push({ spawnT: now, height, width: OBSTACLE_WIDTH_PX * (window.devicePixelRatio || 1) });
+                const gapFromLinePx = lineY - height; // keep this gap constant as axis shifts
+                obstaclesRef.current.push({ spawnT: now, width: OBSTACLE_WIDTH_PX * (window.devicePixelRatio || 1), gapFromLinePx, initialHeight: height });
                 lastSpawnRef.current = performance.now();
               }
             }
@@ -294,9 +449,20 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
         ctx.shadowBlur = 6;
         for (const ob of obstaclesRef.current) {
           const xRight = timeToX(ob.spawnT, now, w);
-          const xLeft = xRight - ob.width;
-          const height = ob.height;
-          ctx.fillRect(xLeft, 0, ob.width, height);
+          // Smooth width reveal from the right edge
+          const reveal = Math.max(0, Math.min(1, (now - ob.spawnT) / REVEAL_DURATION_MS));
+          const easedReveal = 1 - Math.pow(1 - reveal, 3); // easeOutCubic
+          const effectiveWidth = ob.width * easedReveal;
+          const xLeft = xRight - effectiveWidth;
+
+          let height = ob.initialHeight;
+          if (range) {
+            const lineYNow = getLineYAtX(xRight, now, w, h, range);
+            if (lineYNow != null) {
+              height = Math.max(20, Math.min(h, lineYNow - ob.gapFromLinePx));
+            }
+          }
+          ctx.fillRect(xLeft, 0, effectiveWidth, height);
         }
         ctx.restore();
       }
@@ -427,7 +593,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
 
     rafId = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafId);
-  }, [series, range, gameState, scoreSeconds]);
+  }, [series, axisRange, gameState, scoreSeconds]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', maxWidth: 600, margin: '1rem auto 0', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border-primary)', boxShadow: 'var(--shadow-lg)', background: 'var(--bg-glass)' }}>
