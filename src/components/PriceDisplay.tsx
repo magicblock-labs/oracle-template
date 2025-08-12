@@ -1,5 +1,6 @@
 import React from 'react';
 import { PriceFeed } from '../types';
+import PriceChartGame from './PriceChartGame';
 
 interface PriceDisplayProps {
   price: number | null;
@@ -55,6 +56,11 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
     return formatted;
   };
 
+  const normalizedPrice = React.useMemo(() => {
+    if (price == null || !selectedFeed) return null;
+    return price / Math.pow(10, Math.abs(selectedFeed.exponent));
+  }, [price, selectedFeed]);
+
   return (
     <div className="price-display">
       <div className="price-container">
@@ -71,6 +77,9 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
           </span>
         )}
       </div>
+
+      {/* Chart + Game */}
+      <PriceChartGame price={normalizedPrice} feedKey={selectedFeed ? selectedFeed.name : null} />
 
       {feedAddress && selectedFeed && (
         <div className="account-info">
