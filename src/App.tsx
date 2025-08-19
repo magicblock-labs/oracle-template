@@ -33,8 +33,8 @@ function App() {
     <div className="app">
       <div className="container">
         <header className="header">
-          <h1 className="title">MagicBlock x Pyth</h1>
-          <p className="subtitle">This is an example showing how to integrate and use Pyth Price Feeds from a <a href="https://docs.magicblock.gg/pages/get-started/introduction/ephemeral-rollup" target="_blank" rel="noopener noreferrer">Magicblock Ephemeral Rollup</a>. Get started using Magicblock <a href="https://docs.magicblock.gg/pages/get-started/how-integrate-your-program/quickstart" target="_blank" rel="noopener noreferrer">here</a>.</p>
+          <h1 className="title">MagicBlock Real-Time Oracle</h1>
+          <p className="subtitle">This is an example showing how to integrate and use an Oracle (Pyth Price Feeds)from a <a href="https://docs.magicblock.gg/pages/get-started/introduction/ephemeral-rollup" target="_blank" rel="noopener noreferrer">Magicblock Ephemeral Rollup</a>. Get started using Magicblock <a href="https://docs.magicblock.gg/pages/get-started/how-integrate-your-program/quickstart" target="_blank" rel="noopener noreferrer">here</a>.</p>
         </header>
 
         <div className="content">

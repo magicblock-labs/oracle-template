@@ -21,7 +21,7 @@ const BIRD_SIZE = 24; // sprite size in px
 const SPAWN_INTERVAL_MS = 1000;
 const OBSTACLE_WIDTH_PX = 14;
 const MIN_GAP_FROM_LINE_PX = 60; // ensure bar bottom is at least this far from the line at spawn
-const REVEAL_DURATION_MS = 280; // how long a new bar takes to fully reveal from the right
+const REVEAL_DURATION_MS = 500; // how long a new bar takes to fully reveal from the right
 
 // Chart paddings
 const LEFT_PAD = 56;
@@ -242,8 +242,7 @@ const PriceChartGame: React.FC<PriceChartGameProps> = ({ price, feedKey }) => {
       } else if (gameState === 'playing') {
         birdVYRef.current = FLAP_VELOCITY;
       } else if (gameState === 'gameover') {
-        // lock restart for 3 seconds after game over
-        if (gameOverAtRef.current && performance.now() - gameOverAtRef.current < 1000) {
+        if (gameOverAtRef.current && performance.now() - gameOverAtRef.current < 500) {
           return;
         }
         // restart
