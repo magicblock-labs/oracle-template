@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Connection, PublicKey, AccountInfo } from '@solana/web3.js';
 import { PriceFeed } from '../types';
 import { Buffer } from 'buffer';
+import { parsePythLazerPrice } from '../utils/priceUtils';
 
 
 
@@ -19,8 +20,13 @@ interface UseMagicblockWebSocketResult {
   updateCount: number;
 }
 
+interface PriceState {
+  feedId: number;
+  value: number | null;
+}
+
 export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockWebSocketResult => {
-  const [price, setPrice] = useState<number | null>(null);
+  const [priceState, setPriceState] = useState<PriceState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +35,9 @@ export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockW
   
   const connectionRef = useRef<Connection | null>(null);
   const subscriptionIdRef = useRef<number | null>(null);
+  const activeFeedAddressRef = useRef<string | null>(null);
 
   const deriveFeedAddress = useCallback((feedName: string): PublicKey => {
-    console.log('Feed name:', feedName);
     return PublicKey.findProgramAddressSync(
       [
         Buffer.from('price_feed'),
@@ -44,28 +50,26 @@ export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockW
 
   const parseAccountData = useCallback((accountInfo: AccountInfo<Buffer> | null): number | null => {
     if (!accountInfo || !accountInfo.data) return null;
-    console.log('account data length', accountInfo.data.length);
 
     try {
-      const dataView = new DataView(accountInfo.data.buffer);
-      const priceOffset = 73; // This could change if account structure changes in future.
-      const priceInt = Number(dataView.getBigUint64(priceOffset, true));
-      return priceInt;
+      return parsePythLazerPrice(accountInfo.data);
     } catch (err) {
       console.error('Error parsing account data:', err);
       return null;
     }
   }, []);
 
-  const handleAccountChange = useCallback((accountInfo: AccountInfo<Buffer> | null) => {
+  const handleAccountChange = useCallback((accountInfo: AccountInfo<Buffer> | null, feedId: number) => {
     const newPrice = parseAccountData(accountInfo);
-    setPrice(newPrice);
+    setPriceState({ feedId, value: newPrice });
     setError(null);
     setUpdateCount(prev => prev + 1);
   }, [parseAccountData]);
 
-  const subscribeToAccount = useCallback(async (feedAddress: PublicKey) => {
+  const subscribeToAccount = useCallback(async (feedAddress: PublicKey, feedId: number) => {
     if (!connectionRef.current) return;
+    const feedAddressText = feedAddress.toString();
+    activeFeedAddressRef.current = feedAddressText;
 
     try {
       setIsConnecting(true);
@@ -80,13 +84,17 @@ export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockW
       // Subscribe to the new account
       subscriptionIdRef.current = connectionRef.current.onAccountChange(
         feedAddress,
-        handleAccountChange,
+        (accountInfo) => {
+          if (activeFeedAddressRef.current !== feedAddressText) return;
+          handleAccountChange(accountInfo, feedId);
+        },
         'confirmed'
       );
 
       // Get initial account data
       const accountInfo = await connectionRef.current.getAccountInfo(feedAddress);
-      handleAccountChange(accountInfo);
+      if (activeFeedAddressRef.current !== feedAddressText) return;
+      handleAccountChange(accountInfo, feedId);
 
       setIsConnected(true);
       setIsConnecting(false);
@@ -113,13 +121,15 @@ export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockW
       if (connectionRef.current && subscriptionIdRef.current !== null) {
         connectionRef.current.removeAccountChangeListener(subscriptionIdRef.current);
       }
+      activeFeedAddressRef.current = null;
     };
   }, []);
 
   // Subscribe to selected feed
   useEffect(() => {
     if (!selectedFeed || !connectionRef.current) {
-      setPrice(null);
+      activeFeedAddressRef.current = null;
+      setPriceState(null);
       setIsConnected(false);
       setIsConnecting(false);
       setFeedAddress(null);
@@ -129,9 +139,13 @@ export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockW
 
     try {
       const feedAddress = deriveFeedAddress(selectedFeed.pyth_lazer_id.toString());
+      setPriceState(null);
+      setIsConnected(false);
+      setIsConnecting(true);
+      setError(null);
       setFeedAddress(feedAddress.toString());
       setUpdateCount(0);
-      subscribeToAccount(feedAddress);
+      subscribeToAccount(feedAddress, selectedFeed.pyth_lazer_id);
     } catch (err) {
       console.error('Error deriving feed address:', err);
       setError('Failed to derive feed address');
@@ -142,6 +156,11 @@ export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockW
     }
   }, [selectedFeed, deriveFeedAddress, subscribeToAccount]);
 
+  const price =
+    selectedFeed && priceState?.feedId === selectedFeed.pyth_lazer_id
+      ? priceState.value
+      : null;
+
   return {
     price,
     isConnected,
@@ -150,4 +169,4 @@ export const useMagicblockWebSocket = (selectedFeed?: PriceFeed): UseMagicblockW
     feedAddress,
     updateCount,
   };
-}; 
+};

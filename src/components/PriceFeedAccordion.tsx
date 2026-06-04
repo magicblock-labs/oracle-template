@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { PriceFeed } from '../types';
 import priceFeedsData from '../../pyth_lazer_list.json';
 import { PublicKey } from '@solana/web3.js';
@@ -10,6 +10,9 @@ interface PriceFeedAccordionProps {
 }
 
 const PROGRAM_ID = new PublicKey('PriCems5tHihc6UDXDjzjeawomAwBduWMGAi8ZUjppd');
+const FEED_ROW_HEIGHT = 92;
+const FEEDS_LIST_HEIGHT = 320;
+const FEED_OVERSCAN = 6;
 
 const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
   onSelectFeed,
@@ -17,12 +20,18 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [scrollTop, setScrollTop] = useState(0);
   const accordionRef = useRef<HTMLDivElement>(null);
+  const feedsListRef = useRef<HTMLDivElement>(null);
+  const addressCacheRef = useRef<Map<number, string>>(new Map());
 
   const priceFeeds = priceFeedsData as PriceFeed[];
 
-  const deriveFeedAddress = (feedId: number): string => {
-    return PublicKey.findProgramAddressSync(
+  const deriveFeedAddress = useCallback((feedId: number): string => {
+    const cachedAddress = addressCacheRef.current.get(feedId);
+    if (cachedAddress) return cachedAddress;
+
+    const feedAddress = PublicKey.findProgramAddressSync(
       [
         Buffer.from('price_feed'),
         Buffer.from('pyth-lazer'),
@@ -30,7 +39,10 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
       ],
       PROGRAM_ID
     )[0].toString();
-  };
+
+    addressCacheRef.current.set(feedId, feedAddress);
+    return feedAddress;
+  }, []);
 
   const filteredFeeds = useMemo(() => {
     if (!searchTerm) return priceFeeds;
@@ -40,9 +52,25 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
       feed =>
         feed.name.toLowerCase().includes(term) ||
         feed.description.toLowerCase().includes(term) ||
-        feed.symbol.toLowerCase().includes(term)
+        feed.symbol.toLowerCase().includes(term) ||
+        feed.asset_type.toLowerCase().includes(term) ||
+        (feed.nasdaq_symbol?.toLowerCase().includes(term) ?? false)
     );
   }, [searchTerm, priceFeeds]);
+
+  const virtualizedFeeds = useMemo(() => {
+    const startIndex = Math.max(0, Math.floor(scrollTop / FEED_ROW_HEIGHT) - FEED_OVERSCAN);
+    const endIndex = Math.min(
+      filteredFeeds.length,
+      Math.ceil((scrollTop + FEEDS_LIST_HEIGHT) / FEED_ROW_HEIGHT) + FEED_OVERSCAN
+    );
+
+    return {
+      startIndex,
+      totalHeight: filteredFeeds.length * FEED_ROW_HEIGHT,
+      feeds: filteredFeeds.slice(startIndex, endIndex),
+    };
+  }, [filteredFeeds, scrollTop]);
 
   const handleSelectFeed = (feed: PriceFeed) => {
     onSelectFeed(feed);
@@ -66,6 +94,13 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setScrollTop(0);
+    feedsListRef.current?.scrollTo({ top: 0 });
+  }, [isOpen, searchTerm]);
 
   return (
     <div className="price-feed-accordion" ref={accordionRef}>
@@ -101,36 +136,47 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
             />
           </div>
           
-          <div className="feeds-list">
-            {filteredFeeds.map((feed) => {
-              const feedAddress = deriveFeedAddress(feed.pyth_lazer_id);
-              return (
-                <div
-                  key={feed.pyth_lazer_id}
-                  className={`feed-item ${selectedFeed?.pyth_lazer_id === feed.pyth_lazer_id ? 'selected' : ''}`}
-                  onClick={() => handleSelectFeed(feed)}
-                >
-                  <div className="feed-header">
-                    <div className="feed-name">{feed.name}</div>
-                    <a 
-                      href={`https://explorer.solana.com/address/${feedAddress}?cluster=devnet`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="feed-address-link"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {feedAddress.slice(0, 8)}...{feedAddress.slice(-8)}
-                    </a>
-                  </div>
-                  <div className="feed-description">{feed.description}</div>
-                </div>
-              );
-            })}
-            
-            {filteredFeeds.length === 0 && (
+          {filteredFeeds.length === 0 ? (
+            <div className="feeds-list empty">
               <div className="no-results">No price feeds found</div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div
+              className="feeds-list"
+              ref={feedsListRef}
+              onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+            >
+              <div className="feeds-virtual-spacer" style={{ height: virtualizedFeeds.totalHeight }}>
+                {virtualizedFeeds.feeds.map((feed, index) => {
+                  const feedAddress = deriveFeedAddress(feed.pyth_lazer_id);
+                  const rowIndex = virtualizedFeeds.startIndex + index;
+
+                  return (
+                    <div
+                      key={feed.pyth_lazer_id}
+                      className={`feed-item ${selectedFeed?.pyth_lazer_id === feed.pyth_lazer_id ? 'selected' : ''}`}
+                      style={{ top: rowIndex * FEED_ROW_HEIGHT }}
+                      onClick={() => handleSelectFeed(feed)}
+                    >
+                      <div className="feed-header">
+                        <div className="feed-name">{feed.name}</div>
+                        <a
+                          href={`https://explorer.solana.com/address/${feedAddress}?cluster=devnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="feed-address-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {feedAddress.slice(0, 8)}...{feedAddress.slice(-8)}
+                        </a>
+                      </div>
+                      <div className="feed-description">{feed.description}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
       
@@ -286,8 +332,18 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
         }
 
         .feeds-list {
-          max-height: 320px;
+          height: ${FEEDS_LIST_HEIGHT}px;
           overflow-y: auto;
+          position: relative;
+        }
+
+        .feeds-list.empty {
+          height: auto;
+        }
+
+        .feeds-virtual-spacer {
+          position: relative;
+          width: 100%;
         }
 
         .feed-item {
@@ -295,7 +351,11 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           cursor: pointer;
           border-bottom: 1px solid var(--border-secondary);
           transition: all 0.2s ease;
-          position: relative;
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: ${FEED_ROW_HEIGHT}px;
+          box-sizing: border-box;
         }
 
         .feed-item::before {
@@ -335,6 +395,7 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           display: flex;
           justify-content: space-between;
           align-items: center;
+          gap: 0.75rem;
           margin-bottom: 0.375rem;
         }
 
@@ -343,6 +404,10 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           font-size: 1rem;
           color: var(--text-primary);
           letter-spacing: 0.025em;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .feed-address-link {
@@ -356,6 +421,7 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           border: 1px solid rgba(251, 191, 36, 0.2);
           transition: all 0.2s ease;
           font-family: 'Courier New', monospace;
+          flex: 0 0 auto;
         }
 
         .feed-address-link:hover {
@@ -370,6 +436,9 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
           color: var(--text-muted);
           line-height: 1.5;
           font-weight: 400;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .no-results {
@@ -387,4 +456,4 @@ const PriceFeedAccordion: React.FC<PriceFeedAccordionProps> = ({
   );
 };
 
-export default PriceFeedAccordion; 
+export default PriceFeedAccordion;

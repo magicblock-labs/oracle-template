@@ -1,6 +1,6 @@
 # Magicblock Pyth Price Feed 
 
-A modern, real-time cryptocurrency price dashboard that connects to a Magicblock Ephemeral Rollup to display Pyth Network price feeds.
+A modern, real-time asset price dashboard that connects to a Magicblock Ephemeral Rollup to display Pyth Network price feeds.
 
 ## Prerequisites
 
@@ -33,8 +33,8 @@ A modern, real-time cryptocurrency price dashboard that connects to a Magicblock
 
 ## Usage
 
-1. **Select a Price Feed**: Click on the dropdown at the top to browse and search through available cryptocurrency price feeds
-2. **Search**: Use the search bar to quickly find specific cryptocurrencies by name, symbol, or description
+1. **Select a Price Feed**: Click on the dropdown at the top to browse and search through available asset price feeds
+2. **Search**: Use the search bar to quickly find specific assets by name, symbol, asset type, ticker, or description
 3. **View Live Prices**: The selected price feed will display in real-time, updating automatically via WebSocket connection
 4. **Connection Status**: Monitor the connection status indicator to ensure live data flow
 
@@ -56,13 +56,20 @@ const SOLANA_WS_URL = 'wss://api.mainnet-beta.solana.com';
 
 ## Price Feed Data
 
-The application uses the `pyth_lazer_list.json` file which contains metadata for all available price feeds. Each feed includes:
+The application uses the `pyth_lazer_list.json` file which contains metadata for stable USD-denominated Pyth Pro price feeds. The current upstream source is the Pyth symbols API:
+
+```text
+https://pyth.dourolabs.app/v1/symbols
+```
+
+Each feed includes:
 
 - Feed ID and name
 - Symbol and description
 - Exponent for price formatting
 - CoinMarketCap ID
 - Update frequency and channel information
+- Quote currency and exchange ticker metadata when available
 
 ## Account Derivation
 
